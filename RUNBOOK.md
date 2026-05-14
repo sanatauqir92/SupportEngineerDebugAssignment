@@ -32,19 +32,19 @@ dotnet test
 ## Troubleshooting checklist (starter)
 
 ### “Create task fails with 500”
-- Check API logs in console.
-- Verify request payload and headers.
-- Look for unhandled exceptions in `POST /api/tasks`.
+- Check API logs for `X-Client-Timestamp present=False` or `length=0`.
+- **Root cause:** `DateTime.Parse` on an empty or missing header throws `FormatException`.
+- **Fix:** `TaskEndpoints.cs` — use `DateTime.TryParse` with `RoundtripKind` style; fall back to `DateTime.UtcNow` when the header is absent or invalid.
 
 ### “Tasks list is slow”
-- Confirm dataset size (seed can be large).
-- Inspect how the list endpoint fetches and filters data.
-- Review query patterns and database usage.
+- Look for `ListTasks completed` log lines with high `elapsedMs`.
+- **Root cause:** `ToListAsync()` was called before `Where`, loading every row into memory before filtering.
+- **Fix:** `TaskEndpoints.cs` — push `Where`, `OrderByDescending`, and `Take` into the EF Core query so only matching rows are fetched from the database.
 
 ### “Duplicates / wrong order after refresh”
-- Compare API response vs UI rendering.
-- Check the UI state update logic during refresh.
-- Verify how the list is merged and ordered.
+- Replicate by clicking Refresh several times in a row; task count will grow with each press.
+- **Root cause:** `main.js` used `state.tasks.concat(items)`, appending new results to the existing list instead of replacing it.
+- **Fix:** `main.js` — replace `concat` with direct assignment: `state.tasks = items`.
 
 ## Verification steps (starter)
 - Create tasks from UI and via Swagger.
